@@ -1,0 +1,18 @@
+Package: lavaan.survey.fiml
+Type: Package
+Title: Complex survey standard errors (clustering and stratification)
+    for Structural Equation Models.
+Version: 0.1
+Date: 2015-03-25
+Author: Daniel Oberski
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: Similarly to lavaan.survey, this package ties together lavaan (for
+    SEM) and survey (for complex survey designs). Contrary to lavaan.survey,
+    however, this experimental package allows the lavaan model to have been
+    fitted by FIML. It does not do estimation, only standard errors. Since the
+    point estimates as well as se's will be affected by weights, weights cannot
+    be accounted for.
+License: GPL
+Imports:
+    lavaan,
+    survey
