@@ -4,7 +4,7 @@
 # Defines a bread method for estfun in sandwich
 bread.lavaan <- function(fit) {
   #-lavaan:::computeObservedInformation(lavmodel = fit@Model, lavsamplestats = fit@SampleStats, lavdata = fit@Data, estimator = fit@Options$estimator )
-  -lavaan:::computeExpectedInformation(lavmodel = fit@Model, lavsamplestats = fit@SampleStats, lavdata = fit@Data, estimator = fit@Options$estimator )
+  lavaan:::computeExpectedInformation(lavmodel = fit@Model, lavsamplestats = fit@SampleStats, lavdata = fit@Data, estimator = fit@Options$estimator )
 }
 
 #' Calculate complex survey standard errors for lavaan fits estimated with FIML.
@@ -45,7 +45,10 @@ vcov_complex <- function(fit, ids=~1, strata=NULL) {
   
   # Treat casewisegrad*inv(Hessian) as data
   # This is also how svymle works.
-  db <- as.data.frame(lavaan::estfun.lavaan(fit) %*% solve(bread.lavaan(fit)))
+  the_bread <- bread.lavaan(fit)
+  if(min(eigen(the_bread, only.values=TRUE)$values) < .Machine$double.eps*10)
+    warning("Singular information matrix.")
+  db <- as.data.frame(lavaan::estfun.lavaan(fit) %*% MASS::ginv(the_bread))
   names(db) <- paste("V", 1:ncol(db), sep="")
   
   des <- svydesign(ids = ids, probs=~1, strata=strata, data = db)
