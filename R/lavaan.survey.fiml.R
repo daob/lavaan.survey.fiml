@@ -1,13 +1,12 @@
 # Complex survey standard errors for lavaan fits estimated with FIML
-#' @import survey
+#' @importFrom survey svydesign
+#' @importFrom survey svymean
+#' @importFrom survey make.formula
+#' @importFrom lavaan estfun.lavaan
+#' @importFrom lavaan lavInspect
 
-# Defines a bread method for estfun in sandwich
-bread.lavaan <- function(fit) {
-  #-lavaan:::computeObservedInformation(lavmodel = fit@Model, lavsamplestats = fit@SampleStats, lavdata = fit@Data, estimator = fit@Options$estimator )
-  lavaan:::computeExpectedInformation(lavmodel = fit@Model, lavsamplestats = fit@SampleStats, lavdata = fit@Data, estimator = fit@Options$estimator )
-}
 
-#' Calculate complex survey standard errors for lavaan fits estimated with FIML.
+#' @title Calculate complex survey standard errors for lavaan fits estimated with FIML.
 #' 
 #' @param fit A lavaan Fit object.
 #' @param ids Clusters specified as a vector or data frame (not a formula!)
@@ -45,16 +44,21 @@ vcov_complex <- function(fit, ids=~1, strata=NULL) {
   
   # Treat casewisegrad*inv(Hessian) as data
   # This is also how svymle works.
-  the_bread <- bread.lavaan(fit)
-  if(min(eigen(the_bread, only.values=TRUE)$values) < .Machine$double.eps*10)
-    warning("Singular information matrix.")
-  db <- as.data.frame(lavaan::estfun.lavaan(fit) %*% MASS::ginv(the_bread))
+  bread <- lavaan::lavInspect(fit, "information.expected")
+  K <- lavaan:::lav_constraints_R2K(fit@Model)
+  bread <- t(K) %*% bread %*% K
+  inverted_bread <- solve(bread)
+  
+  meat <- lavaan::estfun.lavaan(fit)
+
+  db <- as.data.frame(meat %*% inverted_bread)
   names(db) <- paste("V", 1:ncol(db), sep="")
   
-  des <- svydesign(ids = ids, probs=~1, strata=strata, data = db)
+  des <- survey::svydesign(ids = ids, probs=~1, strata=strata, data = db)
   
-  vcov_fit <- attr(svymean(make.formula(names(db)), design = des), "var")
-  colnames(vcov_fit) <- rownames(vcov_fit) <- names(coef(fit)) # Conserve parameter names
+  vcov_fit <- attr(survey::svymean(survey::make.formula(names(db)), 
+                                   design = des), "var")
+  # Conserve parameter names
+  colnames(vcov_fit) <- rownames(vcov_fit) <- unique(names(coef(fit)))
   vcov_fit
 }
-
